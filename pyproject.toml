@@ -5,13 +5,22 @@ description = ""
 authors = ["cory <121705+corydodt@users.noreply.github.com>"]
 license = "MIT"
 readme = "README.md"
+packages = [
+	{ include = "zcripts", from = "src" },
+	]
 
 [tool.poetry.dependencies]
 python = "^3.9"
 proxmoxer = "^2.0.1"
+nuitka = "^2.0.2"
+requests = "^2.31.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.1.1"
+
+
+[tool.poetry.scripts]
+zcripts = "zcripts.zcripts_cli:main"
 
 [build-system]
 requires = ["poetry-core"]
