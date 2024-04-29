@@ -14,4 +14,5 @@ $(EXE): $(SOURCES)
 build-deps:
 	@echo you may also need to install epel-release for these packages
 	@echo e.g.: sudo dnf install -y epel-release
-	sudo dnf -y install patchelf ccache python-devel gcc
+	pip install patchelf
+	sudo dnf -y install python-devel gcc
