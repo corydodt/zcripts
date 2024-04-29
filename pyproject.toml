@@ -14,6 +14,7 @@ python = "^3.9"
 proxmoxer = "^2.0.1"
 nuitka = "^2.0.2"
 requests = "^2.31.0"
+tomlkit = "^0.12.4"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.1.1"
