@@ -8,7 +8,8 @@ $(EXE): $(SOURCES)
 		--onefile \
 		--output-filename=zcripts \
 		--warn-unusual-code \
-		--include-package=zcripts
+		--include-package=zcripts \
+		--static-libpython=auto
 
 
 build-deps:
