@@ -1,16 +1,15 @@
 [Unit]
 Description=zcripts vm bootstrapper
+Before=systemd-user-sessions.service
 Wants=network-online.target zcriptsinit.mount
 After=network-online.target zcriptsinit.mount
-ConditionPathExists=!%S/zcripts-first-boot
+ConditionPathExists=!%S/%N-first-boot.done
 
 [Service]
-Restart=always
-TimeoutStopSec=70
-ExecStart=/zcriptsinit/zcripts --first-boot %H
 Type=oneshot
-ExecStartPost=/usr/bin/touch %S/zcripts-first-boot
+ExecStart=/zcriptsinit/zcripts --first-boot %H
+ExecStartPost=/usr/bin/touch %S/%N-first-boot.done
 RemainAfterExit=yes
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
