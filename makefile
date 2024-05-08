@@ -16,3 +16,6 @@ build-deps:
 	@echo e.g.: sudo dnf install -y epel-release
 	pip install patchelf
 	sudo dnf -y install python-devel gcc
+
+format:
+	python -m black src/zcripts
