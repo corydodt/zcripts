@@ -20,6 +20,7 @@ class Paths:
     """
     A collection of important paths
     """
+
     zcripts_home: Path
     init_resource_dir: Path
     init_script: Path
@@ -31,7 +32,7 @@ class Paths:
         init_script = cls.find_script(init_resource_dir)
 
         return cls(zcripts_home, init_resource_dir, init_script)
-        
+
     @staticmethod
     def find_resource_dir(zcripts_home: Path, hostname: str) -> Path:
         hostd = zcripts_home / "host.d"
@@ -39,15 +40,20 @@ class Paths:
         match_prefix = hostd.glob(f"{hostname}.*")
         match_zcripts_exact = hostd.glob(f"zcripts.{hostname}")
         match_zcripts_prefix = hostd.glob(f"zcripts.{hostname}.*")
-        for tries in match_exact, match_prefix, match_zcripts_exact, match_zcripts_prefix:
+        for tries in (
+            match_exact,
+            match_prefix,
+            match_zcripts_exact,
+            match_zcripts_prefix,
+        ):
             for item in tries:
                 if item.is_dir():
                     return item
-        
+
         # if we reached this point, we didn't find anything. return the exact
         # path we tried first and let upstream report File Not Found.
         return hostd / hostname
-    
+
     @staticmethod
     def find_script(init_resource_dir: Path) -> Path:
         for test in ["init", "init.py"]:
@@ -108,6 +114,7 @@ def main():
             raise parser.error(f"{paths.init_script}: {e}")
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
