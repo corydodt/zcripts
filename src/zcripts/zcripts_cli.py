@@ -21,8 +21,8 @@ class Paths:
     A collection of important paths
     """
     zcripts_home: Path
-    init_script: Path
     init_resource_dir: Path
+    init_script: Path
 
     @classmethod
     def from_cli(cls, zcripts_home: str, hostname: str) -> "Paths":
@@ -102,6 +102,7 @@ def main():
         new_env["ZCRIPTS_INIT_SCRIPT"] = str(paths.init_script)
 
         try:
+            os.chdir(paths.init_resource_dir)
             os.execle(paths.init_script, paths.init_script, new_env)
         except OSError as e:
             raise parser.error(f"{paths.init_script}: {e}")
