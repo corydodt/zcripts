@@ -1,0 +1,16 @@
+[Unit]
+Description=zcripts vm bootstrapper
+Wants=network-online.target zcriptsinit.mount
+After=network-online.target zcriptsinit.mount
+ConditionPathExists=!%S/zcripts-first-boot
+
+[Service]
+Restart=always
+TimeoutStopSec=70
+ExecStart=/zcriptsinit/zcripts --first-boot %H
+Type=oneshot
+ExecStartPost=/usr/bin/touch %S/zcripts-first-boot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target
