@@ -5,6 +5,7 @@ zcripts
 import argparse
 from copy import deepcopy
 from dataclasses import dataclass
+import errno
 import os
 from pathlib import Path
 import sys
@@ -89,6 +90,7 @@ def main():
     parser.add_argument("hostname")
     parser.add_argument("--dump-config-only", action="store_true")
     parser.add_argument("--first-boot", action="store_true")
+    parser.add_argument("--ignore-missing-host", action="store_true")
     parser.add_argument("--zcripts-home", default=DEFAULT_ZCRIPTS_HOME)
     ns = parser.parse_args()
 
@@ -111,7 +113,9 @@ def main():
             os.chdir(paths.init_resource_dir)
             os.execle(paths.init_script, paths.init_script, new_env)
         except OSError as e:
-            raise parser.error(f"{paths.init_script}: {e}")
+            if e.errno == errno.ENOENT:
+                if not ns.ignore_missing_host:
+                    raise parser.error(f"{paths.init_script}: {e}")
 
     return 0
 
