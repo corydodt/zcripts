@@ -8,12 +8,14 @@ from dataclasses import dataclass
 import errno
 import os
 from pathlib import Path
+import subprocess
 import sys
 
 import tomlkit
 
 
 DEFAULT_ZCRIPTS_HOME = Path("/zcriptsinit")
+SYSTEMD_HOSTNAME_COMMAND = "hostnamectl hostname"
 
 
 @dataclass
@@ -28,6 +30,9 @@ class Paths:
 
     @classmethod
     def from_cli(cls, zcripts_home: str, hostname: str) -> "Paths":
+        """
+        Build a Paths object from the info we received on the cli and the hostname
+        """
         zcripts_home = Path(zcripts_home)
         init_resource_dir = cls.find_resource_dir(zcripts_home, hostname)
         init_script = cls.find_script(init_resource_dir)
@@ -36,6 +41,9 @@ class Paths:
 
     @staticmethod
     def find_resource_dir(zcripts_home: Path, hostname: str) -> Path:
+        """
+        Attempt several variations of the hostname to find a resource dir for this host
+        """
         hostd = zcripts_home / "host.d"
         match_exact = hostd.glob(f"{hostname}")
         match_prefix = hostd.glob(f"{hostname}.*")
@@ -57,6 +65,9 @@ class Paths:
 
     @staticmethod
     def find_script(init_resource_dir: Path) -> Path:
+        """
+        Search a few known locations for an init script to run on this host
+        """
         for test in ["init", "init.py"]:
             attempt = init_resource_dir / test
             if attempt.exists():
@@ -64,10 +75,16 @@ class Paths:
 
 
 def read_defaults(home: Path):
+    """
+    Read /zcriptsinit/defaults.toml
+    """
     return read_toml(home / "defaults.toml")
 
 
 def read_toml(filepath: Path):
+    """
+    Read a toml file, ignoring it if it doesn't exist
+    """
     if not filepath.exists():
         return {}
 
@@ -78,27 +95,48 @@ def read_toml(filepath: Path):
 
 
 def update_config(config, toml_path: Path):
+    """
+    Update the config we read from defaults.toml with config that lives in
+    host.d/.../config.toml (the specified path argument)
+    """
     clone = deepcopy(config)
     clone.update(read_toml(toml_path))
     return clone
+
+
+def get_hostname(cmd):
+    """
+    Interact with system services to get the hostname at the moment zcripts runs
+    
+    We have to get hostname ourselves because systemd's %H is useless
+    in cloud scenarios where the hostname changes after boot.
+    """
+    return subprocess.getoutput(cmd)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.description = __doc__
     parser.formatter_class = argparse.RawDescriptionHelpFormatter
-    parser.add_argument("hostname")
-    parser.add_argument("--dump-config-only", action="store_true")
-    parser.add_argument("--first-boot", action="store_true")
-    parser.add_argument("--ignore-missing-host", action="store_true")
-    parser.add_argument("--zcripts-home", default=DEFAULT_ZCRIPTS_HOME)
+    parser.add_argument("--hostname-command", default=SYSTEMD_HOSTNAME_COMMAND, 
+                        help="Command that will print a single line with the hostname (default: %(default)s)")
+    parser.add_argument("--dump-config-only", action="store_true",
+                        help="If true, do nothing except print the toml config (default: %(default)s)")
+    parser.add_argument("--first-boot", action="store_true",
+                        help="If true, run the first-boot init script (default: %(default)s)")
+    parser.add_argument("--ignore-missing-host", action="store_true",
+                        help="If true, exit with rc=0 (success) even when no init exists for this hostname (default: %(default)s)")
+    parser.add_argument("--zcripts-home", default=DEFAULT_ZCRIPTS_HOME,
+                        help="Path to a directory containing host.d and defaults.toml (default: %(default)s)")
     ns = parser.parse_args()
 
     defaults = read_defaults(ns.zcripts_home)
-    paths = Paths.from_cli(ns.zcripts_home, ns.hostname)
+    hostname = get_hostname(ns.hostname_command)
+    paths = Paths.from_cli(ns.zcripts_home, hostname)
     overloads = update_config(defaults, paths.init_resource_dir / "config.toml")
 
     if ns.dump_config_only:
+        print(f"# hostname at runtime: {hostname}")
         print(tomlkit.dumps(overloads))
         return 0
 
