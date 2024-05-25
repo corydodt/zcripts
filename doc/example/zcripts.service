@@ -1,13 +1,13 @@
 [Unit]
 Description=zcripts vm bootstrapper
 Before=systemd-user-sessions.service
-Wants=network-online.target zcriptsinit.mount
-After=network-online.target zcriptsinit.mount
+Wants=network-online.target zcriptsinit.mount systemd-hostnamed.service
+After=network-online.target zcriptsinit.mount systemd-hostnamed.service
 ConditionPathExists=!%S/%N-first-boot.done
 
 [Service]
 Type=oneshot
-ExecStart=/zcriptsinit/zcripts --first-boot %H
+ExecStart=/usr/local/bin/zcripts --ignore-missing-host --first-boot
 ExecStartPost=/usr/bin/touch %S/%N-first-boot.done
 RemainAfterExit=yes
 
