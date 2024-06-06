@@ -1,8 +1,9 @@
 [Unit]
 Description=zcripts vm bootstrapper
 Before=systemd-user-sessions.service
-Wants=network-online.target zcriptsinit.mount systemd-hostnamed.service
-After=network-online.target zcriptsinit.mount systemd-hostnamed.service
+RequiresMountsFor=/zcriptsinit
+Wants=network-online.target
+After=network-online.target
 ConditionPathExists=!%S/%N-first-boot.done
 
 [Service]
