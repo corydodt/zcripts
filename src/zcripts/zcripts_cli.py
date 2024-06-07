@@ -39,6 +39,10 @@ class Paths:
 
         return cls(zcripts_home, init_resource_dir, init_script)
 
+    @property
+    def zcripts_lib_bash(self) -> Path:
+        return self.zcripts_home / "lib" / "bash"
+
     @staticmethod
     def find_resource_dir(zcripts_home: Path, hostname: str) -> Path:
         """
@@ -144,6 +148,7 @@ def main():
         new_env = deepcopy(os.environ)
         new_env.update(overloads["environment"])
         new_env["ZCRIPTS_HOME"] = str(paths.zcripts_home)
+        new_env["ZCRIPTS_LIB_BASH"] = str(paths.zcripts_lib_bash)
         new_env["ZCRIPTS_INIT_DIR"] = str(paths.init_resource_dir)
         new_env["ZCRIPTS_INIT_SCRIPT"] = str(paths.init_script)
 
