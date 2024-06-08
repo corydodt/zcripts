@@ -37,7 +37,7 @@ jobs:
 
     - name: Check tag matches package version
       run:  |
-        package_ver=$(./zcripts | grep -Eo 'v\S+$')
+        package_ver=$(./zcripts --version | grep -Eo 'v\S+$')
         if ! [[ v$package_ver == $GITHUB_REF_NAME ]]; then
           echo "Refusing to release because tag doesn't match --version: $GITHUB_REF_NAME != $package_ver" 1>&2
           exit 1
