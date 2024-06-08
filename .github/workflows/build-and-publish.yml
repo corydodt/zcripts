@@ -38,7 +38,7 @@ jobs:
     - name: Check tag matches package version
       run:  |
         package_ver=$(./zcripts --version | grep -Eo 'v\S+$')
-        if ! [[ v$package_ver == $GITHUB_REF_NAME ]]; then
+        if ! [[ $package_ver == $GITHUB_REF_NAME ]]; then
           echo "Refusing to release because tag doesn't match --version: $GITHUB_REF_NAME != $package_ver" 1>&2
           echo "(You probably need to update pyproject.toml)" 1>&2
           exit 1
