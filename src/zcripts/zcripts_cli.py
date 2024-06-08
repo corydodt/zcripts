@@ -6,6 +6,7 @@ import argparse
 from copy import deepcopy
 from dataclasses import dataclass
 import errno
+from importlib.metadata import version
 import os
 from pathlib import Path
 import subprocess
@@ -132,12 +133,17 @@ def main():
                         help="If true, exit with rc=0 (success) even when no init exists for this hostname (default: %(default)s)")
     parser.add_argument("--zcripts-home", default=DEFAULT_ZCRIPTS_HOME,
                         help="Path to a directory containing host.d and defaults.toml (default: %(default)s)")
+    parser.add_argument("--version", action="store_true")
     ns = parser.parse_args()
 
     defaults = read_defaults(ns.zcripts_home)
     hostname = get_hostname(ns.hostname_command)
     paths = Paths.from_cli(ns.zcripts_home, hostname)
     overloads = update_config(defaults, paths.init_resource_dir / "config.toml")
+
+    if ns.version:
+        print(f"zcripts v{version('zcripts')}")
+        return 0
 
     if ns.dump_config_only:
         print(f"# hostname at runtime: {hostname}")
@@ -147,6 +153,8 @@ def main():
         print(f"# ZCRIPTS_LIB_BASH: {paths.zcripts_lib_bash}")
         print(tomlkit.dumps(overloads))
         return 0
+
+    print(f"zcripts v{version('zcripts')}")
 
     if ns.first_boot:
         new_env = deepcopy(os.environ)
