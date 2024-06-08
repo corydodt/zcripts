@@ -34,18 +34,18 @@ jobs:
       run: poetry install
     - name: Build exe with nuitka
       run: poetry run make
-    - name: Rename file
-      run: mv -v ./zcripts ./zcripts_${{ matrix.os-is-always-linux }}_${{ matrix.architecture }}
 
     - name: Check tag matches package version
       run:  |
-        package_ver=$(python3 -c 'from importlib.metadata import version as v; print(v("zcripts"))')
+        package_ver=$(./zcripts | grep -Eo 'v\S+$')
         if ! [[ v$package_ver == $GITHUB_REF_NAME ]]; then
-          echo "Tag doesn't match pyproject.toml version: v$package_ver != $GITHUB_REF_NAME" 1>&2
+          echo "Refusing to release because tag doesn't match --version: $GITHUB_REF_NAME != $package_ver" 1>&2
           exit 1
         fi
       if: startsWith(github.ref, 'refs/tags/')
 
+    - name: Rename file
+      run: mv -v ./zcripts ./zcripts_${{ matrix.os-is-always-linux }}_${{ matrix.architecture }}
     - name: Release
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
