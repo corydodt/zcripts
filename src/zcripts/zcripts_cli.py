@@ -141,6 +141,10 @@ def main():
 
     if ns.dump_config_only:
         print(f"# hostname at runtime: {hostname}")
+        print(f"# ZCRIPTS_HOME: {paths.zcripts_home}")
+        print(f"# ZCRIPTS_INIT_DIR: {paths.init_resource_dir}")
+        print(f"# ZCRIPTS_INIT_SCRIPT: {paths.init_script}")
+        print(f"# ZCRIPTS_LIB_BASH: {paths.zcripts_lib_bash}")
         print(tomlkit.dumps(overloads))
         return 0
 
