@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "zcripts"
-version = "v0.2.2"
+version = "v0.3.0"
 description = ""
 authors = ["cory <121705+corydodt@users.noreply.github.com>"]
 license = "MIT"

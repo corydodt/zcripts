@@ -1,0 +1,15 @@
+[Unit]
+Description=zcriptsinit share
+DefaultDependencies=no
+Wants=network-online.target
+After=network-online.target
+
+[Mount]
+What=//${LOCAL_FILESERVER}/zcriptsinit
+Where=/zcriptsinit
+Type=cifs
+Options=defaults,guest,noserverino,nofail
+TimeoutSec=30
+
+[Install]
+WantedBy=multi-user.target
