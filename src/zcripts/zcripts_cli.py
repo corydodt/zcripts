@@ -83,7 +83,9 @@ def read_defaults(home: Path):
     """
     Read /zcriptsinit/defaults.toml
     """
-    return read_toml(home / "defaults.toml")
+    ret = read_toml(home / "defaults.toml")
+    ret.setdefault("environment", {})
+    return ret
 
 
 def read_toml(filepath: Path):
@@ -119,60 +121,85 @@ def get_hostname(cmd):
     return subprocess.getoutput(cmd)
 
 
-def main():
+def build_boot(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    parser.description = do_boot.__doc__
+    parser.add_argument("--ignore-missing-host", action="store_true",
+                        help="If true, exit with rc=0 (success) even when no init exists for this hostname (default: %(default)s)")
+    return parser
+
+
+def build_dumpconfig(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    parser.description = do_dumpconfig.__doc__
+    return parser
+
+
+def do_boot(namespace: argparse.Namespace):
+    """
+    Run the init script for this host (usually at first boot)
+    """
+    ns = namespace
+    new_env = deepcopy(os.environ)
+    new_env.update(ns.overloads["environment"])
+    new_env["ZCRIPTS_HOME"] = str(ns.paths.zcripts_home)
+    new_env["ZCRIPTS_LIB_BASH"] = str(ns.paths.zcripts_lib_bash)
+    new_env["ZCRIPTS_INIT_DIR"] = str(ns.paths.init_resource_dir)
+    new_env["ZCRIPTS_INIT_SCRIPT"] = str(ns.paths.init_script)
+
+    try:
+        os.chdir(ns.paths.init_resource_dir)
+        os.execle(ns.paths.init_script, ns.paths.init_script, new_env)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            if not ns.ignore_missing_host:
+                raise ns.subparser.error(f"{ns.paths.init_script}: {e}")
+    
+    return 0
+
+
+def do_dumpconfig(namespace: argparse.Namespace):
+    """
+    Just print the toml config, then exit
+    """
+    ns = namespace
+    print(f"# hostname at runtime: {ns.hostname}")
+    print(f"# ZCRIPTS_HOME: {ns.paths.zcripts_home}")
+    print(f"# ZCRIPTS_INIT_DIR: {ns.paths.init_resource_dir}")
+    print(f"# ZCRIPTS_INIT_SCRIPT: {ns.paths.init_script}")
+    print(f"# ZCRIPTS_LIB_BASH: {ns.paths.zcripts_lib_bash}")
+    print(tomlkit.dumps(ns.overloads))
+    return 0
+
+
+def build_root_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.description = __doc__
     parser.formatter_class = argparse.RawDescriptionHelpFormatter
     parser.add_argument("--hostname-command", default=SYSTEMD_HOSTNAME_COMMAND, 
-                        help="Command that will print a single line with the hostname (default: %(default)s)")
-    parser.add_argument("--dump-config-only", action="store_true",
-                        help="If true, do nothing except print the toml config (default: %(default)s)")
-    parser.add_argument("--first-boot", action="store_true",
-                        help="If true, run the first-boot init script (default: %(default)s)")
-    parser.add_argument("--ignore-missing-host", action="store_true",
-                        help="If true, exit with rc=0 (success) even when no init exists for this hostname (default: %(default)s)")
+                        help="Specify an external command that will print this hostname, as a single line (default: %(default)s)")
     parser.add_argument("--zcripts-home", default=DEFAULT_ZCRIPTS_HOME,
                         help="Path to a directory containing host.d and defaults.toml (default: %(default)s)")
-    parser.add_argument("--version", action="store_true")
+    parser.add_argument("--version", action="version", version=f"zcripts v{version('zcripts')}")
+
+    subparsers = parser.add_subparsers(dest="subcommand", required=True)
+    boot = subparsers.add_parser("boot")
+    boot = build_boot(boot)
+    boot.set_defaults(sub=do_boot, subparser=boot)
+    dumpconfig = subparsers.add_parser("dumpconfig")
+    dumpconfig = build_dumpconfig(dumpconfig)
+    dumpconfig.set_defaults(sub=do_dumpconfig, subparser=dumpconfig)
+    return parser
+
+
+def main():
+    parser = build_root_parser()
     ns = parser.parse_args()
 
     defaults = read_defaults(ns.zcripts_home)
-    hostname = get_hostname(ns.hostname_command)
-    paths = Paths.from_cli(ns.zcripts_home, hostname)
-    overloads = update_config(defaults, paths.init_resource_dir / "config.toml")
+    setattr(ns, "hostname", get_hostname(ns.hostname_command))
+    setattr(ns, "paths", Paths.from_cli(ns.zcripts_home, ns.hostname))
+    setattr(ns, "overloads", update_config(defaults, ns.paths.init_resource_dir / "config.toml"))
 
-    if ns.version:
-        print(f"zcripts v{version('zcripts')}")
-        return 0
-
-    if ns.dump_config_only:
-        print(f"# hostname at runtime: {hostname}")
-        print(f"# ZCRIPTS_HOME: {paths.zcripts_home}")
-        print(f"# ZCRIPTS_INIT_DIR: {paths.init_resource_dir}")
-        print(f"# ZCRIPTS_INIT_SCRIPT: {paths.init_script}")
-        print(f"# ZCRIPTS_LIB_BASH: {paths.zcripts_lib_bash}")
-        print(tomlkit.dumps(overloads))
-        return 0
-
-    print(f"zcripts v{version('zcripts')}")
-
-    if ns.first_boot:
-        new_env = deepcopy(os.environ)
-        new_env.update(overloads["environment"])
-        new_env["ZCRIPTS_HOME"] = str(paths.zcripts_home)
-        new_env["ZCRIPTS_LIB_BASH"] = str(paths.zcripts_lib_bash)
-        new_env["ZCRIPTS_INIT_DIR"] = str(paths.init_resource_dir)
-        new_env["ZCRIPTS_INIT_SCRIPT"] = str(paths.init_script)
-
-        try:
-            os.chdir(paths.init_resource_dir)
-            os.execle(paths.init_script, paths.init_script, new_env)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                if not ns.ignore_missing_host:
-                    raise parser.error(f"{paths.init_script}: {e}")
-
-    return 0
+    return ns.sub(ns)
 
 
 if __name__ == "__main__":
