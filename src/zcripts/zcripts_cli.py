@@ -114,7 +114,7 @@ def update_config(config, toml_path: Path):
 def get_hostname(cmd):
     """
     Interact with system services to get the hostname at the moment zcripts runs
-    
+
     We have to get hostname ourselves because systemd's %H is useless
     in cloud scenarios where the hostname changes after boot.
     """
@@ -123,8 +123,11 @@ def get_hostname(cmd):
 
 def build_boot(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.description = do_boot.__doc__
-    parser.add_argument("--ignore-missing-host", action="store_true",
-                        help="If true, exit with rc=0 (success) even when no init exists for this hostname (default: %(default)s)")
+    parser.add_argument(
+        "--ignore-missing-host",
+        action="store_true",
+        help="If true, exit with rc=0 (success) even when no init exists for this hostname (default: %(default)s)",
+    )
     return parser
 
 
@@ -152,7 +155,7 @@ def do_boot(namespace: argparse.Namespace):
         if e.errno == errno.ENOENT:
             if not ns.ignore_missing_host:
                 raise ns.subparser.error(f"{ns.paths.init_script}: {e}")
-    
+
     return 0
 
 
@@ -174,11 +177,19 @@ def build_root_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.description = __doc__
     parser.formatter_class = argparse.RawDescriptionHelpFormatter
-    parser.add_argument("--hostname-command", default=SYSTEMD_HOSTNAME_COMMAND, 
-                        help="Specify an external command that will print this hostname, as a single line (default: %(default)s)")
-    parser.add_argument("--zcripts-home", default=DEFAULT_ZCRIPTS_HOME,
-                        help="Path to a directory containing host.d and defaults.toml (default: %(default)s)")
-    parser.add_argument("--version", action="version", version=f"zcripts v{version('zcripts')}")
+    parser.add_argument(
+        "--hostname-command",
+        default=SYSTEMD_HOSTNAME_COMMAND,
+        help="Specify an external command that will print this hostname, as a single line (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--zcripts-home",
+        default=DEFAULT_ZCRIPTS_HOME,
+        help="Path to a directory containing host.d and defaults.toml (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--version", action="version", version=f"zcripts v{version('zcripts')}"
+    )
 
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
     boot = subparsers.add_parser("boot")
@@ -197,7 +208,11 @@ def main():
     defaults = read_defaults(ns.zcripts_home)
     setattr(ns, "hostname", get_hostname(ns.hostname_command))
     setattr(ns, "paths", Paths.from_cli(ns.zcripts_home, ns.hostname))
-    setattr(ns, "overloads", update_config(defaults, ns.paths.init_resource_dir / "config.toml"))
+    setattr(
+        ns,
+        "overloads",
+        update_config(defaults, ns.paths.init_resource_dir / "config.toml"),
+    )
 
     return ns.sub(ns)
 
