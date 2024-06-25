@@ -3,3 +3,4 @@ zcripts_cli.dist
 /nuitka-crash-report.xml
 /zcripts
 /.vscode
+systemd.generated
