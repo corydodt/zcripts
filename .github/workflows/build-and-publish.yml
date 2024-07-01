@@ -10,7 +10,7 @@ jobs:
             poetry-version: ["1.8.2"]
             os: [ubuntu-20.04]
             os-is-always-linux: [linux]
-            architecture: [x64]
+            architecture: [x64, aarch64]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
