@@ -8,8 +8,9 @@ be usable by importlib.resources, so this is our compromise.
 from inspect import cleandoc
 
 
-ZCRIPTSINIT_MOUNT = cleandoc(
-    """
+ZCRIPTSINIT_MOUNT = (
+    cleandoc(
+        """
     [Unit]
     Description=zcriptsinit share
     DefaultDependencies=no
@@ -26,4 +27,6 @@ ZCRIPTSINIT_MOUNT = cleandoc(
     [Install]
     WantedBy=multi-user.target
     """
-) + "\n"
+    )
+    + "\n"
+)

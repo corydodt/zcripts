@@ -8,8 +8,9 @@ be usable by importlib.resources, so this is our compromise.
 from inspect import cleandoc
 
 
-ZCRIPTS_UPGRADE_TIMER = cleandoc(
-    """
+ZCRIPTS_UPGRADE_TIMER = (
+    cleandoc(
+        """
     [Unit]
     Description=check for zcripts upgrade daily
     Requires=zcripts-upgrade.service
@@ -20,4 +21,6 @@ ZCRIPTS_UPGRADE_TIMER = cleandoc(
     [Install]
     WantedBy=timers.target
     """
-) + "\n"
+    )
+    + "\n"
+)

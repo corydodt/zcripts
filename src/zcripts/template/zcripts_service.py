@@ -8,8 +8,9 @@ be usable by importlib.resources, so this is our compromise.
 from inspect import cleandoc
 
 
-ZCRIPTS_SERVICE = cleandoc(
-    """
+ZCRIPTS_SERVICE = (
+    cleandoc(
+        """
     [Unit]
     Description=zcripts vm bootstrapper
     Before=systemd-user-sessions.service
@@ -29,4 +30,6 @@ ZCRIPTS_SERVICE = cleandoc(
     [Install]
     WantedBy=multi-user.target
     """
-) + "\n"
+    )
+    + "\n"
+)
