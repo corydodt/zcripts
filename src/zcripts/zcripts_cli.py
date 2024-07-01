@@ -6,17 +6,28 @@ import argparse
 from copy import deepcopy
 from dataclasses import dataclass
 import errno
-from importlib.metadata import version
+from importlib import metadata
+from inspect import cleandoc
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
+import tempfile
 
 import tomlkit
 
+import questionary
+
+from zcripts.template import *
+from zcripts import featureflag as ff
+
 
 DEFAULT_ZCRIPTS_HOME = Path("/zcriptsinit")
+DEFAULT_UNIT_FILE_PATH = Path("/etc/systemd/system")
+DEFAULT_CONFIG_PATH = Path("/etc/zcripts")
 SYSTEMD_HOSTNAME_COMMAND = "hostnamectl hostname"
+SYSTEMD_ESCAPE_COMMAND = "systemd-escape"
 
 
 @dataclass
@@ -173,6 +184,140 @@ def do_dumpconfig(namespace: argparse.Namespace):
     return 0
 
 
+def systemd_escape(s: str) -> str:
+    """
+    Escape `s' with `systemd-escape -p <s>`, for use as a mount point path
+    """
+    return subprocess.getoutput(f"{SYSTEMD_ESCAPE_COMMAND} --path {s}")
+
+
+def generate_systemd_strings(answers: dict) -> dict:
+    """
+    Interpolate configuration into our systemd unit templates and config file.
+
+    Produces a dict of {basename: contents} for each basename of each generated file.
+    """
+    escaped_mount_point = systemd_escape(answers["mount_point"])
+    return {
+        "zcripts.service": ZCRIPTS_SERVICE.format(vars=answers),
+        f"{escaped_mount_point}.mount": ZCRIPTSINIT_MOUNT.format(vars=answers),
+        "zcripts-upgrade.service": ZCRIPTS_UPGRADE_SERVICE.format(vars=answers),
+        "zcripts-upgrade.timer": ZCRIPTS_UPGRADE_TIMER.format(vars=answers),
+        "answers.toml": tomlkit.dumps({"main": answers}),
+    }
+
+
+def do_generate_systemd(namespace: argparse.Namespace):
+    """
+    Create unit files you can install to make this instance run zcripts at boot.
+    """
+    if not namespace.answer_file:
+        required = lambda text: True if len(text) > 0 else "Required"
+        answers = questionary.form(
+            fileshare=questionary.text(
+                "Path to a fileshare we can mount (e.g. //fileshare/zcriptsinit)?",
+                validate=required,
+            ),
+            mount_point=questionary.path(
+                "Where should zcriptsinit be mounted in the filesystem?",
+                default="/zcriptsinit",
+                validate=required,
+            ),
+        ).unsafe_ask()
+    else:
+        try:
+            with open(namespace.answer_file) as f:
+                answers = tomlkit.load(f)["main"]
+        except OSError as e:
+            raise namespace.subparser.error(e)
+
+    with tempfile.TemporaryDirectory(prefix="zcripts-generate-systemd") as td:
+        p = Path(td)
+
+        strings = generate_systemd_strings(answers)
+        for basename, contents in strings.items():
+            pb = p / basename
+            pb.write_text(contents)
+
+        def copy_fn(src, dst, *a, **kw):
+            """Verbosely copy"""
+            shutil.copy2(src, dst, *a, **kw)
+            print(f"Created {dst}")
+
+        if not namespace.internal_use_install_silent:
+            shutil.copytree(p, ".", copy_function=copy_fn, dirs_exist_ok=True)
+        else:
+            unit_file_path = namespace.unit_file_path
+            config_path = namespace.config_path
+
+            shutil.copytree(
+                p,
+                namespace.unit_file_path,
+                ignore=shutil.ignore_patterns("*.toml"),
+                copy_function=copy_fn,
+                dirs_exist_ok=True,
+            )
+            shutil.copy2(
+                p / "answers.toml",
+                namespace.config_path,
+                copy_function=copy_fn,
+            )
+
+            units = " ".join([k for k in strings if not k == "anwers.toml"])
+
+            print(
+                cleandoc(
+                    f"""
+                            =====================================
+                            - You must also run:
+
+                            systemctl daemon-reload
+                            systemctl reload-or-restart {units}
+                            """
+                )
+            )
+
+
+def do_upgrade(namespace: argparse.Namespace):
+    f"""
+    Disabled (zcripts.featureflag.SELF_UPGRADE={ff.SELF_UPGRADE})
+    """
+    raise namespace.subparser.error(NotImplementedError())
+
+
+def build_upgrade(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    parser.description = do_upgrade.__doc__
+    return parser
+
+
+def build_generate_systemd(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    parser.description = do_generate_systemd.__doc__
+    parser.add_argument(
+        "--answer-file",
+        default=None,
+        help="Generate files without prompting by loading the given .toml file",
+    )
+
+    if ff.INSTALL_SYSTEMD:
+        parser.add_argument(
+            "--internal-use-install-silent",
+            help="Install generated files in system locations, e.g. /etc/systemd/system and /etc/zcripts",
+            action="store_true",
+        )
+        parser.add_argument(
+            "--unit-file-path",
+            help="Filesystem path to install generated systemd units",
+            default=DEFAULT_UNIT_FILE_PATH,
+        )
+        parser.add_argument(
+            "--config-path",
+            help="Filesystem path to install zcripts config",
+            default=DEFAULT_CONFIG_PATH,
+        )
+
+    return parser
+
+
 def build_root_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.description = __doc__
@@ -188,7 +333,7 @@ def build_root_parser() -> argparse.ArgumentParser:
         help="Path to a directory containing host.d and defaults.toml (default: %(default)s)",
     )
     parser.add_argument(
-        "--version", action="version", version=f"zcripts v{version('zcripts')}"
+        "--version", action="version", version=f"zcripts v{metadata.version('zcripts')}"
     )
 
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
@@ -198,6 +343,13 @@ def build_root_parser() -> argparse.ArgumentParser:
     dumpconfig = subparsers.add_parser("dumpconfig")
     dumpconfig = build_dumpconfig(dumpconfig)
     dumpconfig.set_defaults(sub=do_dumpconfig, subparser=dumpconfig)
+    generate_systemd = subparsers.add_parser("generate-systemd")
+    generate_systemd = build_generate_systemd(generate_systemd)
+    generate_systemd.set_defaults(sub=do_generate_systemd, subparser=generate_systemd)
+    if ff.SELF_UPGRADE:
+        upgrade = subparsers.add_parser("upgrade")
+        upgrade = build_upgrade(upgrade)
+        upgrade.set_defaults(sub=do_upgrade, subparser=upgrade)
     return parser
 
 

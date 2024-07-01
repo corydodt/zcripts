@@ -16,7 +16,8 @@ build-deps:
 	@echo you may also need to install epel-release for these packages
 	@echo e.g.: sudo dnf install -y epel-release
 	pip install patchelf
-	sudo dnf -y install python-devel gcc
+	sudo dnf -y install python-devel gcc ccache
+
 
 format:
 	python -m black src/zcripts
