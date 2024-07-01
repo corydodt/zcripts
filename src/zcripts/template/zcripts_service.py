@@ -24,7 +24,7 @@ ZCRIPTS_SERVICE = (
     # remove the deprecated location for .done file
     ExecStartPre=rm -vf %S/%N-first-boot.done
     ExecStart=zcripts boot --ignore-missing-host
-    ExecStartPost=touch %S/zcripts/%N-first-boot.done
+    ExecStartPost=bash -c 'mkdir -p %S/zcripts && touch %S/zcripts/%N-first-boot.done'
     RemainAfterExit=yes
 
     [Install]
