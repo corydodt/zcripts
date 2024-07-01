@@ -10,7 +10,9 @@ jobs:
             poetry-version: ["1.8.2"]
             os: [ubuntu-20.04]
             os-is-always-linux: [linux]
-            architecture: [x64, aarch64]
+            architecture: [x64]
+            # note on aarch64: https://github.blog/2024-06-03-arm64-on-github-actions-powering-faster-more-efficient-build-systems/
+            # tl;dr available to paying github users but not available yet to open source
     runs-on: ["${{ matrix.os }}", "${{ matrix.architecture }}"]
     steps:
     - uses: actions/checkout@v4
