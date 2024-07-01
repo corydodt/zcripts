@@ -22,7 +22,7 @@ ZCRIPTS_SERVICE = (
     [Service]
     Type=oneshot
     # remove the deprecated location for .done file
-    ExecStartPre=rm -v %S/%N-first-boot.done
+    ExecStartPre=rm -vf %S/%N-first-boot.done
     ExecStart=zcripts boot --ignore-missing-host
     ExecStartPost=touch %S/zcripts/%N-first-boot.done
     RemainAfterExit=yes
