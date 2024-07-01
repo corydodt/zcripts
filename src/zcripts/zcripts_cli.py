@@ -244,38 +244,40 @@ def do_generate_systemd(namespace: argparse.Namespace):
             shutil.copy2(src, dst, *a, **kw)
             print(f"Created {dst}")
 
-        if not namespace.internal_use_install_silent:
-            shutil.copytree(p, ".", copy_function=copy_fn, dirs_exist_ok=True)
-        else:
-            unit_file_path = namespace.unit_file_path
-            config_path = namespace.config_path
+        if ff.INSTALL_SYSTEMD:
+            if namespace.internal_use_install_silent:
+                unit_file_path = namespace.unit_file_path
+                config_path = namespace.config_path
 
-            shutil.copytree(
-                p,
-                namespace.unit_file_path,
-                ignore=shutil.ignore_patterns("*.toml"),
-                copy_function=copy_fn,
-                dirs_exist_ok=True,
-            )
-            shutil.copy2(
-                p / "answers.toml",
-                namespace.config_path,
-                copy_function=copy_fn,
-            )
-
-            units = " ".join([k for k in strings if not k == "anwers.toml"])
-
-            print(
-                cleandoc(
-                    f"""
-                            =====================================
-                            - You must also run:
-
-                            systemctl daemon-reload
-                            systemctl reload-or-restart {units}
-                            """
+                shutil.copytree(
+                    p,
+                    namespace.unit_file_path,
+                    ignore=shutil.ignore_patterns("*.toml"),
+                    copy_function=copy_fn,
+                    dirs_exist_ok=True,
                 )
-            )
+                shutil.copy2(
+                    p / "answers.toml",
+                    namespace.config_path,
+                    copy_function=copy_fn,
+                )
+
+                units = " ".join([k for k in strings if not k == "anwers.toml"])
+
+                print(
+                    cleandoc(
+                        f"""
+                                =====================================
+                                - You must also run:
+
+                                systemctl daemon-reload
+                                systemctl reload-or-restart {units}
+                                """
+                    )
+                )
+                return
+
+        shutil.copytree(p, ".", copy_function=copy_fn, dirs_exist_ok=True)
 
 
 def do_upgrade(namespace: argparse.Namespace):
