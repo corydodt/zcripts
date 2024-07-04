@@ -4,3 +4,6 @@ zcripts_cli.dist
 /zcripts
 /.vscode
 systemd.generated
+/zcripts_cli.build
+/zcripts_cli.onefile-build
+/zcripts_cli.dist
