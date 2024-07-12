@@ -211,7 +211,21 @@ def do_generate_systemd(namespace: argparse.Namespace):
     """
     Create unit files you can install to make this instance run zcripts at boot.
     """
+    asking_questions = False
     if not namespace.answer_file:
+        asking_questions = True
+    else:
+        try:
+            with open(namespace.answer_file) as f:
+                answers = tomlkit.load(f)["main"]
+        except OSError as e:
+            if namespace.answer_file_ignore_missing:
+                print("** Warning: {str(namespace.answer_file)}: {e}")
+                asking_questions = True
+            else:
+                raise namespace.subparser.error(e)
+
+	if asking_questions:
         required = lambda text: True if len(text) > 0 else "Required"
         answers = questionary.form(
             fileshare=questionary.text(
@@ -224,12 +238,6 @@ def do_generate_systemd(namespace: argparse.Namespace):
                 validate=required,
             ),
         ).unsafe_ask()
-    else:
-        try:
-            with open(namespace.answer_file) as f:
-                answers = tomlkit.load(f)["main"]
-        except OSError as e:
-            raise namespace.subparser.error(e)
 
     with tempfile.TemporaryDirectory(prefix="zcripts-generate-systemd") as td:
         p = Path(td)
@@ -267,12 +275,12 @@ def do_generate_systemd(namespace: argparse.Namespace):
                 print(
                     cleandoc(
                         f"""
-                                =====================================
-                                - You must also run:
+                            =====================================
+                            - You must also run:
 
-                                systemctl daemon-reload
-                                systemctl reload-or-restart {units}
-                                """
+                            systemctl daemon-reload
+                            systemctl reload-or-restart {units}
+                            """
                     )
                 )
                 return
@@ -298,6 +306,12 @@ def build_generate_systemd(parser: argparse.ArgumentParser) -> argparse.Argument
         "--answer-file",
         default=None,
         help="Generate files without prompting by loading the given .toml file",
+    )
+    parser.add_argument(
+        "--answer-file-ignore-missing",
+        default=None,
+        help="If --answer-file is given but the file is missing, just ask the questions instead",
+        action="store_true"
     )
 
     if ff.INSTALL_SYSTEMD:
