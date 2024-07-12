@@ -225,7 +225,7 @@ def do_generate_systemd(namespace: argparse.Namespace):
             else:
                 raise namespace.subparser.error(e)
 
-	if asking_questions:
+    if asking_questions:
         required = lambda text: True if len(text) > 0 else "Required"
         answers = questionary.form(
             fileshare=questionary.text(
@@ -311,7 +311,7 @@ def build_generate_systemd(parser: argparse.ArgumentParser) -> argparse.Argument
         "--answer-file-ignore-missing",
         default=None,
         help="If --answer-file is given but the file is missing, just ask the questions instead",
-        action="store_true"
+        action="store_true",
     )
 
     if ff.INSTALL_SYSTEMD:
