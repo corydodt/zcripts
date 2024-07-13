@@ -7,3 +7,7 @@ systemd.generated
 /zcripts_cli.build
 /zcripts_cli.onefile-build
 /zcripts_cli.dist
+/*.service
+/*.timer
+/*.mount
+/answers.toml

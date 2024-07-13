@@ -220,7 +220,7 @@ def do_generate_systemd(namespace: argparse.Namespace):
                 answers = tomlkit.load(f)["main"]
         except OSError as e:
             if namespace.answer_file_ignore_missing:
-                print("** Warning: {str(namespace.answer_file)}: {e}")
+                print(f"** Warning: {e}")
                 asking_questions = True
             else:
                 raise namespace.subparser.error(e)
