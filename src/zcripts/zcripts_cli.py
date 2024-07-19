@@ -37,6 +37,8 @@ class Paths:
     """
 
     zcripts_home: Path
+    base_resource_dir: Path
+    base_script: Path
     init_resource_dir: Path
     init_script: Path
 
@@ -46,10 +48,12 @@ class Paths:
         Build a Paths object from the info we received on the cli and the hostname
         """
         zcripts_home = Path(zcripts_home)
+        base_resource_dir = zcripts_home / "base"
+        base_script = cls.find_script(base_resource_dir)
         init_resource_dir = cls.find_resource_dir(zcripts_home, hostname)
         init_script = cls.find_script(init_resource_dir)
 
-        return cls(zcripts_home, init_resource_dir, init_script)
+        return cls(zcripts_home, base_resource_dir, base_script, init_resource_dir, init_script)
 
     @property
     def zcripts_lib_bash(self) -> Path:
@@ -132,6 +136,11 @@ def get_hostname(cmd):
     return subprocess.getoutput(cmd)
 
 
+def build_base(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    parser.description = do_base.__doc__
+    return parser
+
+
 def build_boot(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.description = do_boot.__doc__
     parser.add_argument(
@@ -145,6 +154,27 @@ def build_boot(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
 def build_dumpconfig(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.description = do_dumpconfig.__doc__
     return parser
+
+
+def do_base(namespace: argparse.Namespace):
+    """
+    Run the init script for this host (usually at first base)
+    """
+    ns = namespace
+    new_env = deepcopy(os.environ)
+    new_env.update(ns.overloads["environment"])
+    new_env["ZCRIPTS_HOME"] = str(ns.paths.zcripts_home)
+    new_env["ZCRIPTS_LIB_BASH"] = str(ns.paths.zcripts_lib_bash)
+    new_env["ZCRIPTS_INIT_DIR"] = str(ns.paths.base_resource_dir)
+    new_env["ZCRIPTS_INIT_SCRIPT"] = str(ns.paths.base_script)
+
+    try:
+        os.chdir(ns.paths.base_resource_dir)
+        os.execle(ns.paths.base_script, ns.paths.base_script, new_env)
+    except OSError as e:
+        raise ns.subparser.error(f"{ns.paths.base_script}: {e}")
+
+    return 0
 
 
 def do_boot(namespace: argparse.Namespace):
@@ -201,8 +231,6 @@ def generate_systemd_strings(answers: dict) -> dict:
     return {
         "zcripts.service": ZCRIPTS_SERVICE.format(vars=answers),
         f"{escaped_mount_point}.mount": ZCRIPTSINIT_MOUNT.format(vars=answers),
-        "zcripts-upgrade.service": ZCRIPTS_UPGRADE_SERVICE.format(vars=answers),
-        "zcripts-upgrade.timer": ZCRIPTS_UPGRADE_TIMER.format(vars=answers),
         "answers.toml": tomlkit.dumps({"main": answers}),
     }
 
@@ -252,52 +280,7 @@ def do_generate_systemd(namespace: argparse.Namespace):
             shutil.copy2(src, dst, *a, **kw)
             print(f"Created {dst}")
 
-        if ff.INSTALL_SYSTEMD:
-            if namespace.internal_use_install_silent:
-                unit_file_path = namespace.unit_file_path
-                config_path = namespace.config_path
-
-                shutil.copytree(
-                    p,
-                    namespace.unit_file_path,
-                    ignore=shutil.ignore_patterns("*.toml"),
-                    copy_function=copy_fn,
-                    dirs_exist_ok=True,
-                )
-                shutil.copy2(
-                    p / "answers.toml",
-                    namespace.config_path,
-                    copy_function=copy_fn,
-                )
-
-                units = " ".join([k for k in strings if not k == "anwers.toml"])
-
-                print(
-                    cleandoc(
-                        f"""
-                            =====================================
-                            - You must also run:
-
-                            systemctl daemon-reload
-                            systemctl reload-or-restart {units}
-                            """
-                    )
-                )
-                return
-
         shutil.copytree(p, ".", copy_function=copy_fn, dirs_exist_ok=True)
-
-
-def do_upgrade(namespace: argparse.Namespace):
-    f"""
-    Disabled (zcripts.featureflag.SELF_UPGRADE={ff.SELF_UPGRADE})
-    """
-    raise namespace.subparser.error(NotImplementedError())
-
-
-def build_upgrade(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
-    parser.description = do_upgrade.__doc__
-    return parser
 
 
 def build_generate_systemd(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
@@ -313,23 +296,6 @@ def build_generate_systemd(parser: argparse.ArgumentParser) -> argparse.Argument
         help="If --answer-file is given but the file is missing, just ask the questions instead",
         action="store_true",
     )
-
-    if ff.INSTALL_SYSTEMD:
-        parser.add_argument(
-            "--internal-use-install-silent",
-            help="Install generated files in system locations, e.g. /etc/systemd/system and /etc/zcripts",
-            action="store_true",
-        )
-        parser.add_argument(
-            "--unit-file-path",
-            help="Filesystem path to install generated systemd units",
-            default=DEFAULT_UNIT_FILE_PATH,
-        )
-        parser.add_argument(
-            "--config-path",
-            help="Filesystem path to install zcripts config",
-            default=DEFAULT_CONFIG_PATH,
-        )
 
     return parser
 
@@ -353,6 +319,9 @@ def build_root_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
+    base = subparsers.add_parser("base")
+    base = build_base(base)
+    base.set_defaults(sub=do_base, subparser=base)
     boot = subparsers.add_parser("boot")
     boot = build_boot(boot)
     boot.set_defaults(sub=do_boot, subparser=boot)
@@ -362,10 +331,6 @@ def build_root_parser() -> argparse.ArgumentParser:
     generate_systemd = subparsers.add_parser("generate-systemd")
     generate_systemd = build_generate_systemd(generate_systemd)
     generate_systemd.set_defaults(sub=do_generate_systemd, subparser=generate_systemd)
-    if ff.SELF_UPGRADE:
-        upgrade = subparsers.add_parser("upgrade")
-        upgrade = build_upgrade(upgrade)
-        upgrade.set_defaults(sub=do_upgrade, subparser=upgrade)
     return parser
 
 
