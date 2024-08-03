@@ -158,7 +158,7 @@ def build_dumpconfig(parser: argparse.ArgumentParser) -> argparse.ArgumentParser
 
 def do_base(namespace: argparse.Namespace):
     """
-    Run the init script for this host (usually at first base)
+    Run the init script for this host using the /zcriptsinit/base directory
     """
     ns = namespace
     new_env = deepcopy(os.environ)
