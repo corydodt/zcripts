@@ -9,7 +9,7 @@ and run `zcripts boot` to configure the VM automatically.
 
 ## TODO
 
-- [_] 
+- [_] add system-wide environment variables at boot
 
 
 ## CONCEPTS
