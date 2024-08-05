@@ -35,7 +35,7 @@ jobs:
     - name: Install the project dependencies
       run: poetry install
     - name: Build exe with nuitka
-      run: poetry run make
+      run: BUILD_ARCH=${{ matrix.architecture }} poetry run make exe installer
 
     - name: Check tag matches package version
       run:  |
@@ -47,10 +47,11 @@ jobs:
         fi
       if: startsWith(github.ref, 'refs/tags/')
 
-    - name: Rename file
-      run: mv -v ./zcripts ./zcripts_${{ matrix.os-is-always-linux }}_${{ matrix.architecture }}
     - name: Release
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        files: ./zcripts_${{ matrix.os-is-always-linux }}_${{ matrix.architecture }}
+        files:
+          - ./zcripts_${{ matrix.os-is-always-linux }}_${{ matrix.architecture }}
+          - ./install-zcripts_${{ matrix.architecture }}.run
+          - bin/install-zcripts.sh

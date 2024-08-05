@@ -11,3 +11,4 @@ systemd.generated
 /*.timer
 /*.mount
 /answers.toml
+/.env
