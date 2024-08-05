@@ -32,7 +32,15 @@ and run `zcripts boot` to configure the VM automatically.
 
     The program (usually distributed as a single-file exe) we run to do boot
     configuration.  When zcripts is installed to run at boot, it gathers the
-    hostname, fileshare path,
+    hostname, fileshare path, and then invokes:
+    
+        ```
+        /zcriptsinit/host.d/$(hostnamectl hostname)/init
+        ```
+    
+    The contents of `init` are host-specific and should be written by the system
+    operators. It should configure a blank VM to do whatever you need it to do.
+    (This mirrors the functioning of cloud-init closely.)
 
     In systemd-based systems, you should create `zcripts.service` to run this
     (see below).
@@ -40,13 +48,13 @@ and run `zcripts boot` to configure the VM automatically.
 - zcripts.service
 
     The systemd service that runs at boot that launches `zcripts`.
-    `zcripts generate-systemd` can be used to create this systemd unit.
+    You can use `zcripts generate-systemd` to create this systemd unit.
 
 
 - zcriptsinit.mount
 
     The systemd unit that runs at boot that mounts `/zcriptsinit`.
-    `zcripts generate-systemd` can be used to create this systemd unit.
+    You can use `zcripts generate-systemd` to create this systemd unit.
 
 
 ## FILES

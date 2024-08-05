@@ -51,7 +51,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        files:
-          - ./zcripts_${{ matrix.os-is-always-linux }}_${{ matrix.architecture }}
-          - ./install-zcripts_${{ matrix.architecture }}.run
-          - bin/install-zcripts.sh
+        files: |
+          ./zcripts_${{ matrix.os-is-always-linux }}_${{ matrix.architecture }}
+          ./install-zcripts_${{ matrix.architecture }}.run
+          bin/install-zcripts.sh
