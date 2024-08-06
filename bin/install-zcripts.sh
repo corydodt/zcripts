@@ -14,4 +14,5 @@ export DOWNLOAD_URL="https://github.com/corydodt/zcripts/releases/latest/downloa
 curl -sSL -o"$tmp/${filename}" ${DOWNLOAD_URL}
 trap 'rm -rvf $tmp' EXIT
 
+chmod +x "$tmp/${filename}"
 $tmp/"$filename"
