@@ -12,6 +12,6 @@ filename=install-zcripts_${DOWNLOAD_ARCH}.run
 export DOWNLOAD_URL="https://github.com/corydodt/zcripts/releases/latest/download/${filename}"
 
 curl -sSL -o"$tmp/${filename}" ${DOWNLOAD_URL}
-trap 'rm -rvf $tmp'
+trap 'rm -rvf $tmp' EXIT
 
 $tmp/"$filename"
