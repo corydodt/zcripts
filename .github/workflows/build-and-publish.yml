@@ -33,7 +33,7 @@ jobs:
             path: ./.venv
             key: venv-${{ hashFiles('poetry.lock') }}
     - name: Install the project dependencies
-      run: poetry install
+      run: poetry install && sudo apt -y install makeself
     - name: Build exe with nuitka
       run: BUILD_ARCH=${{ matrix.architecture }} poetry run make exe installer
 
