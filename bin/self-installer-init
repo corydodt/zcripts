@@ -4,5 +4,5 @@ set -eu
 IFS=$'\n\t'
 
 
-umask 133
 cp -v ./zcripts /usr/local/bin/zcripts
+chmod +x /usr/local/bin/zcripts
