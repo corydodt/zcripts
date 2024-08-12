@@ -136,11 +136,6 @@ def get_hostname(cmd):
     return subprocess.getoutput(cmd)
 
 
-def build_base(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
-    parser.description = do_base.__doc__
-    return parser
-
-
 def build_boot(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.description = do_boot.__doc__
     parser.add_argument(
@@ -154,27 +149,6 @@ def build_boot(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
 def build_dumpconfig(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
     parser.description = do_dumpconfig.__doc__
     return parser
-
-
-def do_base(namespace: argparse.Namespace):
-    """
-    Run the init script for this host using the /zcriptsinit/base directory
-    """
-    ns = namespace
-    new_env = deepcopy(os.environ)
-    new_env.update(ns.overloads["environment"])
-    new_env["ZCRIPTS_HOME"] = str(ns.paths.zcripts_home)
-    new_env["ZCRIPTS_LIB_BASH"] = str(ns.paths.zcripts_lib_bash)
-    new_env["ZCRIPTS_INIT_DIR"] = str(ns.paths.base_resource_dir)
-    new_env["ZCRIPTS_INIT_SCRIPT"] = str(ns.paths.base_script)
-
-    try:
-        os.chdir(ns.paths.base_resource_dir)
-        os.execle(ns.paths.base_script, ns.paths.base_script, new_env)
-    except OSError as e:
-        raise ns.subparser.error(f"{ns.paths.base_script}: {e}")
-
-    return 0
 
 
 def do_boot(namespace: argparse.Namespace):
@@ -319,9 +293,6 @@ def build_root_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
-    base = subparsers.add_parser("base")
-    base = build_base(base)
-    base.set_defaults(sub=do_base, subparser=base)
     boot = subparsers.add_parser("boot")
     boot = build_boot(boot)
     boot.set_defaults(sub=do_boot, subparser=boot)
