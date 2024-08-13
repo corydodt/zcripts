@@ -236,7 +236,7 @@ def do_generate_systemd(namespace: argparse.Namespace):
             ),
             mount_point=questionary.path(
                 "Where should zcriptsinit be mounted in the filesystem?",
-                default="/zcriptsinit",
+                default=namespace.zcripts_home,
                 validate=required,
             ),
         ).unsafe_ask()
