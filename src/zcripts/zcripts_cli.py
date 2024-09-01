@@ -28,7 +28,7 @@ DEFAULT_UNIT_FILE_PATH = Path("/etc/systemd/system")
 DEFAULT_CONFIG_PATH = Path("/etc/zcripts")
 SYSTEMD_HOSTNAME_COMMAND = "hostnamectl hostname"
 SYSTEMD_ESCAPE_COMMAND = "systemd-escape"
-## TIMEOUT_COMMAND = "/usr/bin/timeout"
+TIMEOUT_COMMAND = "/usr/bin/timeout"
 
 
 @dataclass
@@ -101,6 +101,7 @@ def read_defaults(home: Path):
     """
     ret = read_toml(home / "defaults.toml")
     ret.setdefault("environment", {})
+    ret.setdefault("main", {})
     return ret
 
 
@@ -152,9 +153,16 @@ def build_dumpconfig(parser: argparse.ArgumentParser) -> argparse.ArgumentParser
     return parser
 
 
-## def exec_init_script(exe_path: Path, env, timeout: str="0"):
-##     os.execle(TIMEOUT_COMMAND, timeout, exe_path, env)
-## 
+def exec_init_script(exe_path: Path, env, timeout: str="0"):
+    """
+    Run the init script as a child of /usr/bin/timeout, with specified timeout
+    (default = 0, no timeout)
+
+    ``timeout'' is a string specifying either a number of seconds or a specified
+    time unit, e.g. "1d" for 1 day
+    """
+    os.execle(TIMEOUT_COMMAND, TIMEOUT_COMMAND, timeout, exe_path, env)
+
 
 def do_boot(namespace: argparse.Namespace):
     """
@@ -170,8 +178,7 @@ def do_boot(namespace: argparse.Namespace):
 
     try:
         os.chdir(ns.paths.init_resource_dir)
-        ## exec_init_script(ns.paths.init_script, ns.main.timeout, new_env)
-        os.execle(ns.paths.init_script, ns.paths.init_script, new_env)
+        exec_init_script(ns.paths.init_script, new_env, ns.overloads["main"]["timeout"])
     except OSError as e:
         if e.errno == errno.ENOENT:
             if not ns.ignore_missing_host:
@@ -318,7 +325,7 @@ def main():
 
     try:
         defaults = read_defaults(ns.zcripts_home)
-    except tomlkit.exceptions.InvalidNumberError as e:
+    except tomlkit.exceptions.TOMLKitError as e:
         raise ns.subparser.error(f"{ns.zcripts_home / 'defaults.toml'}: {e}")
 
     setattr(ns, "hostname", get_hostname(ns.hostname_command))
@@ -329,7 +336,7 @@ def main():
             "overloads",
             update_config(defaults, ns.paths.init_resource_dir / "config.toml"),
         )
-    except tomlkit.exceptions.InvalidNumberError as e:
+    except tomlkit.exceptions.TOMLKitError as e:
         raise ns.subparser.error(f"{ns.paths.init_resource_dir / 'config.toml'}: {e}")
 
     return ns.sub(ns)
