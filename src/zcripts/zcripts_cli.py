@@ -28,6 +28,7 @@ DEFAULT_UNIT_FILE_PATH = Path("/etc/systemd/system")
 DEFAULT_CONFIG_PATH = Path("/etc/zcripts")
 SYSTEMD_HOSTNAME_COMMAND = "hostnamectl hostname"
 SYSTEMD_ESCAPE_COMMAND = "systemd-escape"
+## TIMEOUT_COMMAND = "/usr/bin/timeout"
 
 
 @dataclass
@@ -151,6 +152,10 @@ def build_dumpconfig(parser: argparse.ArgumentParser) -> argparse.ArgumentParser
     return parser
 
 
+## def exec_init_script(exe_path: Path, env, timeout: str="0"):
+##     os.execle(TIMEOUT_COMMAND, timeout, exe_path, env)
+## 
+
 def do_boot(namespace: argparse.Namespace):
     """
     Run the init script for this host (usually at first boot)
@@ -165,6 +170,7 @@ def do_boot(namespace: argparse.Namespace):
 
     try:
         os.chdir(ns.paths.init_resource_dir)
+        ## exec_init_script(ns.paths.init_script, ns.main.timeout, new_env)
         os.execle(ns.paths.init_script, ns.paths.init_script, new_env)
     except OSError as e:
         if e.errno == errno.ENOENT:
@@ -287,6 +293,7 @@ def build_root_parser() -> argparse.ArgumentParser:
         "--zcripts-home",
         default=DEFAULT_ZCRIPTS_HOME,
         help="Path to a directory containing host.d and defaults.toml (default: %(default)s)",
+        type=Path,
     )
     parser.add_argument(
         "--version", action="version", version=f"zcripts v{metadata.version('zcripts')}"
@@ -309,14 +316,21 @@ def main():
     parser = build_root_parser()
     ns = parser.parse_args()
 
-    defaults = read_defaults(ns.zcripts_home)
+    try:
+        defaults = read_defaults(ns.zcripts_home)
+    except tomlkit.exceptions.InvalidNumberError as e:
+        raise ns.subparser.error(f"{ns.zcripts_home / 'defaults.toml'}: {e}")
+
     setattr(ns, "hostname", get_hostname(ns.hostname_command))
     setattr(ns, "paths", Paths.from_cli(ns.zcripts_home, ns.hostname))
-    setattr(
-        ns,
-        "overloads",
-        update_config(defaults, ns.paths.init_resource_dir / "config.toml"),
-    )
+    try:
+        setattr(
+            ns,
+            "overloads",
+            update_config(defaults, ns.paths.init_resource_dir / "config.toml"),
+        )
+    except tomlkit.exceptions.InvalidNumberError as e:
+        raise ns.subparser.error(f"{ns.paths.init_resource_dir / 'config.toml'}: {e}")
 
     return ns.sub(ns)
 
